@@ -197,9 +197,11 @@ def main():
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{p['desc']}">
 <meta property="og:url" content="{SITE_URL}{p['path']}">
-<meta property="og:image" content="{SITE_URL}/assets/img/thekeyaudit-logo.svg">
+<meta property="og:image" content="{SITE_URL}/assets/img/favicon/favicon-512.png">
 <meta name="theme-color" content="#0F2A3D">
-<link rel="icon" type="image/svg+xml" href="{b0}assets/img/thekeyaudit-logo-corto-claro.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="{b0}assets/img/favicon/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="{b0}assets/img/favicon/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="{b0}assets/img/favicon/favicon-180.png">
 <link rel="preload" href="{b0}assets/fonts/Astonpoliz.otf" as="font" type="font/otf" crossorigin>
 <link rel="preload" href="{b0}assets/fonts/CreatoDisplay-Regular.otf" as="font" type="font/otf" crossorigin>
 <link rel="stylesheet" href="{b0}assets/css/site.css">
