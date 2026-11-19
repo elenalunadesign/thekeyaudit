@@ -18,6 +18,7 @@ assets/fonts/         Astonpoliz y Creato Display
 assets/img/           Logos, foto e iconos (clientes/: versiones -claro y -oscuro)
 src/                  Archivos fuente del lienzo de diseño (.dc.html)
 tools/build.py        Genera index.html y en/index.html desde src/
+api/contacto.php      Verifica reCAPTCHA v3 y reenvía el formulario (Hostinger, PHP)
 ```
 
 ## Actualizar el sitio
@@ -49,6 +50,25 @@ tools/build.py        Genera index.html y en/index.html desde src/
 - Envía a `contacto@thekeyaudit.com` mediante [FormSubmit](https://formsubmit.co) (AJAX).
 - Al publicarse en un dominio nuevo, FormSubmit puede pedir activarlo otra vez: llega un correo «Activate Form» a contacto@.
 - Si el envío falla, la página muestra el motivo y un código (`FORM_NOT_ACTIVATED`, `TIMEOUT_120S`, `NETWORK_ERROR`, etc.).
+
+### reCAPTCHA v3 (Hostinger)
+
+En `thekeyaudit.com` el formulario pasa por `api/contacto.php`, que verifica reCAPTCHA v3 con Google, filtra bots (campo trampa y límite de 5 envíos cada 10 minutos por IP) y reenvía el mensaje a FormSubmit. En el lienzo de diseño y en GitHub Pages el formulario sigue enviando directo a FormSubmit.
+
+1. En https://www.google.com/recaptcha/admin/create crea un sitio **reCAPTCHA v3** con los dominios `thekeyaudit.com` y `localhost`.
+2. **Site Key** (pública): ponla como valor por defecto de la prop `recaptchaKey` en `src/Main.dc.html` y `src/Main-EN.dc.html` (o en el panel Tweaks del lienzo) y ejecuta `python3 tools/build.py`. Mientras esté vacía, reCAPTCHA queda apagado.
+3. **Secret Key** (privada, nunca en el repositorio): en el File Manager de Hostinger crea `tka-config.php` **junto a** `public_html` (no dentro):
+
+   ```php
+   <?php return [
+     'recaptcha_secret' => 'TU_SECRET_KEY',
+     'formsubmit'       => 'https://formsubmit.co/ajax/contacto@thekeyaudit.com',
+     'min_score'        => 0.5,
+   ];
+   ```
+
+   En `formsubmit` puedes usar el alias aleatorio que FormSubmit da tras la activación, para no exponer el correo.
+4. Códigos de error nuevos: `CAPTCHA_FAILED`, `CAPTCHA_LOW_SCORE`, `CAPTCHA_UNAVAILABLE`, `RATE_LIMIT`, `SERVER_NOT_CONFIGURED`.
 
 ## Pendientes
 

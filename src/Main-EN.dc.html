@@ -26,6 +26,8 @@ html{scroll-behavior:smooth}
 .tka .srv-card{flex:1 1 480px;min-width:0;display:flex;flex-direction:column;gap:22px;padding:36px;background:#273E4F;color:#FFFFFF;border:1.5px solid #0BB9FE;border-radius:6px;box-sizing:border-box}
 .tka.oscuro .srv-card{background:#273E4F}
 .tka .form-err{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1.5px solid #FF8A7A;border-left-width:6px;border-radius:6px;background:rgba(255,138,122,.08);color:#FFFFFF}
+.grecaptcha-badge{visibility:hidden!important}
+.tka .form-recaptcha a{color:inherit}
 .tka .form-err svg{flex:none;margin-top:2px;color:#FF8A7A}
 .tka .form-err-tag{display:inline-block;margin-right:8px;padding:2px 8px;border-radius:2px;background:#FF8A7A;color:#0F2A3D;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;vertical-align:2px}
 .tka .srv-card.srv-line,.tka.oscuro .srv-card.srv-line{background:transparent}
@@ -704,6 +706,7 @@ html[data-vt="slide"] .vt-quote{view-transition-name:tka-quote}
 </button>
 <sc-if value="{{error}}" hint-placeholder-val="{{false}}"><div role="alert" class="form-err"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 7v6M12 16.5v.01"></path></svg><div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><p style="margin: 0; font-size: 17px; font-weight: 800; line-height: 1.35;"><span class="form-err-tag">Error</span>{{errTitle}}</p><p style="margin: 0; font-size: 16px; line-height: 1.5; color: #D8E0E7;">{{errReason}}</p><p style="margin: 0; font-size: 15px; line-height: 1.5; color: #D8E0E7;">Your details are still in the form. You can also email us at <a href="mailto:contacto@thekeyaudit.com" style="color: var(--link);">contacto@thekeyaudit.com</a> or message us on <a href="https://wa.me/523351519484" target="_blank" rel="noopener noreferrer" style="color: var(--link);">WhatsApp</a>.</p><p style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: #9FB2C5;">CODE: {{errCode}}</p></div></div></sc-if>
 <p style="margin: 0; font-size: 14px; color: var(--tx3);">By submitting, you agree to our <a href="#aviso-de-privacidad">privacy notice</a>.</p>
+<p class="form-recaptcha" style="margin: -12px 0 0; font-size: 13px; line-height: 1.5; color: var(--tx3);">Protected by Google reCAPTCHA: Google’s <a href="https://policies.google.com/privacy?hl=en" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="https://policies.google.com/terms?hl=en" target="_blank" rel="noopener noreferrer">Terms of Service</a> apply.</p>
 </sc-if>
 </form>
 </div>
@@ -750,7 +753,7 @@ html[data-vt="slide"] .vt-quote{view-transition-name:tka-quote}
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["sistema","claro","oscuro"],"default":"sistema"},"movimiento":{"editor":"boolean","default":true},"envioReal":{"editor":"boolean","default":true},"simularError":{"editor":"enum","options":["ninguno","activacion","timeout","servidor","red","offline"],"default":"ninguno"},"$preview":{"width":1440,"height":11800}}'>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["sistema","claro","oscuro"],"default":"sistema"},"movimiento":{"editor":"boolean","default":true},"envioReal":{"editor":"boolean","default":true},"simularError":{"editor":"enum","options":["ninguno","captcha","activacion","timeout","servidor","red","offline"],"default":"ninguno"},"recaptchaKey":{"editor":"text","default":""},"endpoint":{"editor":"text","default":"/api/contacto.php"},"$preview":{"width":1440,"height":11800}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -770,6 +773,29 @@ class Component extends DCLogic {
       if (this.wide.addEventListener) this.wide.addEventListener('change', this.onWide);
     } catch (e) {}
     this.startReveals();
+    if (this.captchaOn()) this.captchaTimer = setTimeout(function () { self.loadCaptcha(); }, 2500);
+  }
+  captchaOn() {
+    // reCAPTCHA solo en el dominio propio (y en localhost para pruebas); en el lienzo y en GitHub Pages se envía directo a FormSubmit
+    var h = typeof location !== 'undefined' ? location.hostname : '';
+    return !!(this.props.envioReal && this.props.recaptchaKey && /(^|\.)thekeyaudit\.com$|^localhost$|^127\.0\.0\.1$/.test(h));
+  }
+  loadCaptcha() {
+    var key = this.props.recaptchaKey;
+    if (!this.captchaP) this.captchaP = new Promise(function (ok, ko) {
+      var done = function () { window.grecaptcha.ready(function () { ok(window.grecaptcha); }); };
+      if (window.grecaptcha && window.grecaptcha.execute) { done(); return; }
+      var sc = document.createElement('script');
+      sc.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(key);
+      sc.async = true;
+      sc.onload = function () { if (window.grecaptcha) done(); else ko(new Error('captcha')); };
+      sc.onerror = function () { ko(new Error('captcha')); };
+      document.head.appendChild(sc);
+      setTimeout(function () { ko(new Error('captcha')); }, 20000);
+    });
+    var self = this;
+    this.captchaP.catch(function () { self.captchaP = null; });
+    return this.captchaP;
   }
   componentDidUpdate(prevProps) {
     if (prevProps.tema !== this.props.tema && this.state.override !== null) this.setState({ override: null });
@@ -786,6 +812,7 @@ class Component extends DCLogic {
     this.stopReveals();
     this.lockScroll(false);
     if (this.sendTimer) clearTimeout(this.sendTimer);
+    if (this.captchaTimer) clearTimeout(this.captchaTimer);
   }
   lockScroll(on) {
     try { document.documentElement.style.overflow = on ? 'hidden' : ''; } catch (e) {}
@@ -915,7 +942,7 @@ class Component extends DCLogic {
     var tabOn = tabBase + 'color: #0BB9FE; border-color: #0BB9FE;';
     var tabOff = tabBase + 'color: #9FB2C5; border-color: transparent;';
 
-    var ERR = {"campos": ["Check the highlighted fields", "Missing or invalid: {x}."], "offline": ["No internet connection", "Your device is offline. Check your connection and try again."], "timeout": ["Sending took too long", "The form service didn’t respond within 2 minutes. Your message may still have arrived; if you don’t hear from us within a day, please try again."], "activacion": ["Form pending activation", "The form service hasn’t been activated for contacto@thekeyaudit.com yet, so your message wasn’t delivered. Nothing is wrong with your details."], "servidor": ["The form service failed", "The server returned an error (HTTP {x}). Please try again in a few minutes."], "rechazo": ["Your message was rejected", "The form service didn’t accept the message{x}. Check your details or try again later."], "red": ["We couldn’t reach the form service", "The connection to the server failed. This can be caused by your network, a firewall or a browser blocker."], "respuesta": ["Unexpected response", "The form service replied in a format we don’t recognize, so we can’t confirm your message was sent."]};
+    var ERR = {"campos": ["Check the highlighted fields", "Missing or invalid: {x}."], "offline": ["No internet connection", "Your device is offline. Check your connection and try again."], "timeout": ["Sending took too long", "The form service didn’t respond within 2 minutes. Your message may still have arrived; if you don’t hear from us within a day, please try again."], "activacion": ["Form pending activation", "The form service hasn’t been activated for contacto@thekeyaudit.com yet, so your message wasn’t delivered. Nothing is wrong with your details."], "servidor": ["The form service failed", "The server returned an error (HTTP {x}). Please try again in a few minutes."], "rechazo": ["Your message was rejected", "The form service didn’t accept the message{x}. Check your details or try again later."], "red": ["We couldn’t reach the form service", "The connection to the server failed. This can be caused by your network, a firewall or a browser blocker."], "respuesta": ["Unexpected response", "The form service replied in a format we don’t recognize, so we can’t confirm your message was sent."], "captcha": ["We couldn’t confirm you’re a person", "The security check (reCAPTCHA) didn’t approve this submission. Reload the page and try again; if you use a VPN or a blocker, turn it off for a moment."], "captchaCarga": ["The security check didn’t load", "Google’s reCAPTCHA service didn’t respond or is blocked in your browser (for example, by an ad blocker), so the form can’t be sent."], "limite": ["Too many submissions", "We received several messages from your connection in a short time. Please wait a few minutes and try again."], "config": ["Form under maintenance", "The server-side check isn’t configured yet, so your message wasn’t delivered. Nothing is wrong with your details."]};
     var quotes = [
       { text: '[Client testimonial: the problem they had, what TheKeyAudit found and what changed in their operations. Two to four lines.]', name: '[Full name]', role: '[Title · Company]' },
       { text: '[Second client testimonial, ideally from another industry or a control environment project.]', name: '[Full name]', role: '[Title · Company]' }
@@ -1043,7 +1070,7 @@ class Component extends DCLogic {
         // Envío real a contacto@thekeyaudit.com vía FormSubmit; desactiva envioReal para simularlo en el lienzo
         if (!self.props.envioReal || !form) {
           var sim = self.props.simularError;
-          if (sim && sim !== 'ninguno') { self.sendTimer = setTimeout(function () { fail(sim, sim === 'servidor' ? '503' : '', ({ activacion: 'FORM_NOT_ACTIVATED', timeout: 'TIMEOUT_120S', servidor: 'HTTP_503', red: 'NETWORK_ERROR', offline: 'OFFLINE' })[sim] + ' · SIM'); }, 900); return; }
+          if (sim && sim !== 'ninguno') { self.sendTimer = setTimeout(function () { fail(sim, sim === 'servidor' ? '503' : '', ({ captcha: 'CAPTCHA_FAILED', activacion: 'FORM_NOT_ACTIVATED', timeout: 'TIMEOUT_120S', servidor: 'HTTP_503', red: 'NETWORK_ERROR', offline: 'OFFLINE' })[sim] + ' · SIM'); }, 900); return; }
           self.sendTimer = setTimeout(function () { self.setState({ sending: false, sent: true }); }, 900);
           return;
         }
@@ -1051,7 +1078,17 @@ class Component extends DCLogic {
         var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var timedOut = false;
         var tmr = setTimeout(function () { timedOut = true; if (ctrl) ctrl.abort(); }, 120000);
-        fetch('https://formsubmit.co/ajax/contacto@thekeyaudit.com', { method: 'POST', headers: { Accept: 'application/json' }, body: new FormData(form), signal: ctrl ? ctrl.signal : undefined })
+        var useCaptcha = self.captchaOn();
+        var body = new FormData(form);
+        body.append('idioma', 'en');
+        var step = useCaptcha
+          ? self.loadCaptcha()
+              .then(function (g) { return g.execute(self.props.recaptchaKey, { action: 'contacto' }); })
+              .then(function (tok) { body.append('g-recaptcha-response', tok); }, function () { var er = new Error('captcha'); er.captcha = true; throw er; })
+          : Promise.resolve();
+        step.then(function () {
+          return fetch(useCaptcha ? (self.props.endpoint || '/api/contacto.php') : 'https://formsubmit.co/ajax/contacto@thekeyaudit.com', { method: 'POST', headers: { Accept: 'application/json' }, body: body, signal: ctrl ? ctrl.signal : undefined });
+        })
           .then(function (r) {
             return r.text().then(function (txt) {
               var d = null;
@@ -1065,13 +1102,17 @@ class Component extends DCLogic {
             var d = res.d;
             if (d && (d.success === true || d.success === 'true')) { self.setState({ sending: false, sent: true, error: false }); return; }
             var msg = d && d.message ? String(d.message) : '';
+            var code = d && d.code ? String(d.code) : '';
+            var byCode = { CAPTCHA_FAILED: 'captcha', CAPTCHA_LOW_SCORE: 'captcha', RATE_LIMIT: 'limite', SERVER_NOT_CONFIGURED: 'config', FORM_NOT_ACTIVATED: 'activacion', VALIDATION: 'campos' };
+            if (byCode[code]) { fail(byCode[code], code === 'VALIDATION' ? msg : '', code); return; }
             if (/activat/i.test(msg)) { fail('activacion', '', 'FORM_NOT_ACTIVATED'); return; }
             if (!res.ok) { fail('servidor', String(res.status), 'HTTP_' + res.status); return; }
             if (!d) { fail('respuesta', '', 'BAD_RESPONSE'); return; }
             fail('rechazo', msg ? ' (“' + msg.slice(0, 140) + '”)' : '', 'REJECTED');
           })
-          .catch(function () {
+          .catch(function (er) {
             clearTimeout(tmr);
+            if (er && er.captcha) { fail('captchaCarga', '', 'CAPTCHA_UNAVAILABLE'); return; }
             if (timedOut) { fail('timeout', '', 'TIMEOUT_120S'); return; }
             if (typeof navigator !== 'undefined' && navigator.onLine === false) { fail('offline', '', 'OFFLINE'); return; }
             fail('red', '', 'NETWORK_ERROR');

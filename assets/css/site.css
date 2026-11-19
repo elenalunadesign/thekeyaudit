@@ -15,6 +15,8 @@ html{scroll-behavior:smooth}
 .tka .srv-card{flex:1 1 480px;min-width:0;display:flex;flex-direction:column;gap:22px;padding:36px;background:#273E4F;color:#FFFFFF;border:1.5px solid #0BB9FE;border-radius:6px;box-sizing:border-box}
 .tka.oscuro .srv-card{background:#273E4F}
 .tka .form-err{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1.5px solid #FF8A7A;border-left-width:6px;border-radius:6px;background:rgba(255,138,122,.08);color:#FFFFFF}
+.grecaptcha-badge{visibility:hidden!important}
+.tka .form-recaptcha a{color:inherit}
 .tka .form-err svg{flex:none;margin-top:2px;color:#FF8A7A}
 .tka .form-err-tag{display:inline-block;margin-right:8px;padding:2px 8px;border-radius:2px;background:#FF8A7A;color:#0F2A3D;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;vertical-align:2px}
 .tka .srv-card.srv-line,.tka.oscuro .srv-card.srv-line{background:transparent}
