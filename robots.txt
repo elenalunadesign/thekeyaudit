@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /src/
+Disallow: /tools/
+
+Sitemap: https://thekeyaudit.com/sitemap.xml

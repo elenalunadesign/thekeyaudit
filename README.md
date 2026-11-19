@@ -19,6 +19,10 @@ assets/img/           Logos, foto e iconos (clientes/: versiones -claro y -oscur
 src/                  Archivos fuente del lienzo de diseño (.dc.html)
 tools/build.py        Genera index.html y en/index.html desde src/
 api/contacto.php      Verifica reCAPTCHA v3 y reenvía el formulario (Hostinger, PHP)
+.htaccess             Redirecciones (https, sin www), caché, compresión y seguridad (Hostinger)
+404.html              Página de error propia
+robots.txt, sitemap.xml   Generados por tools/build.py
+assets/img/og/        Imágenes para compartir en redes (1200×630); fuente en tools/og/
 ```
 
 ## Actualizar el sitio
@@ -44,6 +48,16 @@ api/contacto.php      Verifica reCAPTCHA v3 y reenvía el formulario (Hostinger,
      - Registro **CNAME** para `www`: `<usuario>.github.io`
    - Activa **Enforce HTTPS** cuando GitHub lo permita.
    - No toques los registros **MX** (correo en Google).
+
+## SEO
+
+- `tools/build.py` genera en cada página: título, descripción, canonical, hreflang ES/EN, Open Graph y Twitter (imagen 1200×630), datos estructurados JSON-LD (`ProfessionalService`, `WebSite`, `WebPage` y `FAQPage` con las preguntas frecuentes), carga diferida de imágenes y versión (`?v=`) en CSS/JS para el caché.
+- También genera `sitemap.xml` (con la fecha del día) y `robots.txt`.
+- Para regenerar las imágenes de redes después de cambiar `tools/og/og-*.html`:
+
+  ```bash
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars --allow-file-access-from-files --window-size=1200,630 --screenshot="$PWD/assets/img/og/og-es.png" "file://$PWD/tools/og/og-es.html"
+  ```
 
 ## Formulario de contacto
 

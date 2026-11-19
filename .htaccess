@@ -1,0 +1,63 @@
+# TheKeyAudit · configuración de Apache/LiteSpeed (Hostinger)
+
+Options -Indexes
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# 1 · Una sola dirección: https://thekeyaudit.com (sin www)
+RewriteCond %{HTTPS} off [OR]
+RewriteCond %{HTTP_HOST} ^www\. [NC]
+RewriteRule ^ https://thekeyaudit.com%{REQUEST_URI} [L,R=301]
+
+# 2 · Sin index.html en la dirección
+RewriteCond %{THE_REQUEST} \s/+(.*/)?index\.html[\s?] [NC]
+RewriteRule ^ /%1 [L,R=301]
+
+# 3 · Archivos internos del proyecto: no se publican
+RewriteRule ^(src|tools)(/|$) - [R=404,L]
+RewriteRule ^(README\.md|\.nojekyll|\.gitignore)$ - [R=404,L]
+RewriteRule (^|/)\.git(/|$) - [R=404,L]
+
+# 4 · Direcciones del WordPress anterior: llevan a la portada
+RewriteRule ^(wp-admin|wp-content|wp-includes|wp-login\.php|feed|category|tag|author)(/|$) / [L,R=301]
+</IfModule>
+
+# Tipos de archivo
+<IfModule mod_mime.c>
+AddType font/otf .otf
+AddType image/svg+xml .svg
+AddType application/xml .xml
+AddCharset utf-8 .html .css .js .xml .txt .svg
+</IfModule>
+
+# Compresión
+<IfModule mod_deflate.c>
+AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml application/javascript application/x-javascript application/xml application/json image/svg+xml font/otf
+</IfModule>
+
+# Caché del navegador
+# CSS y JS llevan ?v=<huella> en el HTML, así que pueden guardarse un año sin quedar viejos.
+<IfModule mod_headers.c>
+<FilesMatch "\.(html|xml|txt)$">
+Header set Cache-Control "public, max-age=0, must-revalidate"
+</FilesMatch>
+<FilesMatch "\.(css|js)$">
+Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+<FilesMatch "\.(otf|woff2?|svg|png|jpe?g|webp|ico)$">
+Header set Cache-Control "public, max-age=31536000"
+</FilesMatch>
+<FilesMatch "\.php$">
+Header set Cache-Control "no-store"
+</FilesMatch>
+
+# Seguridad básica (también cuenta para la calidad del sitio)
+Header always set Strict-Transport-Security "max-age=31536000"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+</IfModule>

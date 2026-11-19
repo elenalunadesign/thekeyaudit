@@ -7,6 +7,8 @@ Genera el sitio estático de TheKeyAudit a partir de las páginas del lienzo de 
 
 Uso:  python3 tools/build.py      (requiere Python 3 y Node.js)
 """
+import datetime
+import hashlib
 import json
 import re
 import subprocess
@@ -48,9 +50,11 @@ ASSETS = {
 }
 
 PAGES = [
-    dict(src='Main.dc.html', out='index.html', base='', js='page-es.js', lang='es-MX', path='/',
+    dict(src='Main.dc.html', out='index.html', base='', js='page-es.js', lang='es-MX', path='/', locale='es_MX', alt_locale='en_US', og='og-es.png',
+         og_alt='TheKeyAudit · Consultoría en auditoría interna y control interno en Guadalajara',
          desc='Despacho de auditoría interna y control interno en Guadalajara. Auditoría de procesos, ambiente de control y remediación de hallazgos con más de 20 años de experiencia multinacional.'),
-    dict(src='Main-EN.dc.html', out='en/index.html', base='../', js='page-en.js', lang='en', path='/en/',
+    dict(src='Main-EN.dc.html', out='en/index.html', base='../', js='page-en.js', lang='en', path='/en/', locale='en_US', alt_locale='es_MX', og='og-en.png',
+         og_alt='TheKeyAudit · Internal audit and internal control consulting in Guadalajara, Mexico',
          desc='Internal audit and internal control consulting firm in Guadalajara, Mexico. Business process audits, control environment and audit findings remediation, backed by 20+ years of multinational experience.'),
 ]
 
@@ -127,6 +131,77 @@ def add_keys(nodes, counter=None):
             add_keys(n[3], counter)
 
 
+def lazy_images(nodes):
+    """Carga diferida para imágenes fuera del encabezado (el logo se carga de inmediato)."""
+    for n in nodes:
+        if n[0] == 'e':
+            if n[1] == 'img':
+                names = [a[0] for a in n[2]]
+                src = dict((a[0], a[1]) for a in n[2]).get('src') or ''
+                if 'thekeyaudit-logo' not in src and 'loading' not in names:
+                    n[2].append(['loading', 'lazy'])
+                    n[2].append(['decoding', 'async'])
+            lazy_images(n[3])
+        elif n[0] == 'if':
+            lazy_images(n[2])
+        elif n[0] == 'for':
+            lazy_images(n[3])
+
+
+def fingerprint(path):
+    return hashlib.sha1(path.read_bytes()).hexdigest()[:10]
+
+
+def json_ld(p, faqs):
+    """Datos estructurados: empresa local, sitio web y preguntas frecuentes."""
+    en = p['lang'] == 'en'
+    url = SITE_URL + p['path']
+    org = {
+        '@type': 'ProfessionalService',
+        '@id': SITE_URL + '/#empresa',
+        'name': 'TheKeyAudit',
+        'url': SITE_URL + '/',
+        'logo': SITE_URL + '/assets/img/favicon/favicon-512.png',
+        'image': SITE_URL + '/assets/img/og/' + p['og'],
+        'description': p['desc'],
+        'telephone': '+52 33 5151 9484',
+        'email': 'contacto@thekeyaudit.com',
+        'address': {'@type': 'PostalAddress', 'addressLocality': 'Guadalajara', 'addressRegion': 'Jalisco', 'addressCountry': 'MX'},
+        'areaServed': [{'@type': 'Country', 'name': 'México' if not en else 'Mexico'}],
+        'availableLanguage': ['es', 'en'],
+        'founder': {'@type': 'Person', 'name': 'Aarón Gutiérrez',
+                    'image': SITE_URL + '/assets/img/aaron-gutierrez-auditoria-interna-guadalajara.jpg'},
+        'sameAs': ['https://www.linkedin.com/company/thekeyaudit/'],
+        'knowsAbout': (['Internal audit', 'Internal control', 'Business process audit', 'Control environment', 'Audit findings remediation'] if en else
+                       ['Auditoría interna', 'Control interno', 'Auditoría de procesos de negocio', 'Ambiente de control', 'Remediación de hallazgos de auditoría']),
+    }
+    site = {'@type': 'WebSite', '@id': SITE_URL + '/#sitio', 'url': SITE_URL + '/', 'name': 'TheKeyAudit',
+            'inLanguage': ['es-MX', 'en'], 'publisher': {'@id': SITE_URL + '/#empresa'}}
+    page = {'@type': 'WebPage', '@id': url + '#pagina', 'url': url, 'name': p['title'], 'description': p['desc'],
+            'inLanguage': p['lang'], 'isPartOf': {'@id': SITE_URL + '/#sitio'}, 'about': {'@id': SITE_URL + '/#empresa'}}
+    graph = [org, site, page]
+    if faqs:
+        graph.append({'@type': 'FAQPage', '@id': url + '#preguntas', 'inLanguage': p['lang'], 'mainEntity': [
+            {'@type': 'Question', 'name': f['q'], 'acceptedAnswer': {'@type': 'Answer', 'text': f['a']}} for f in faqs]})
+    data = json.dumps({'@context': 'https://schema.org', '@graph': graph}, ensure_ascii=False, indent=1)
+    return data.replace('</', '<\\/')
+
+
+def write_seo_files():
+    today = datetime.date.today().isoformat()
+    urls = ''
+    for p in PAGES:
+        alts = ''.join('    <xhtml:link rel="alternate" hreflang="%s" href="%s%s"/>\n' % (q['lang'], SITE_URL, q['path']) for q in PAGES)
+        alts += '    <xhtml:link rel="alternate" hreflang="x-default" href="%s/"/>\n' % SITE_URL
+        urls += '  <url>\n    <loc>%s%s</loc>\n    <lastmod>%s</lastmod>\n%s  </url>\n' % (SITE_URL, p['path'], today, alts)
+    (ROOT / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+        + urls + '</urlset>\n', encoding='utf-8')
+    (ROOT / 'robots.txt').write_text('User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /src/\nDisallow: /tools/\n\n'
+        'Sitemap: %s/sitemap.xml\n' % SITE_URL, encoding='utf-8')
+    print('OK sitemap.xml, robots.txt')
+
+
 def asset_url(m, base):
     return base + 'assets/' + ASSETS[m.group(1)]
 
@@ -162,6 +237,7 @@ def main():
         b.close()
         ast = b.root
         add_keys(ast)
+        lazy_images(ast)
 
         page_js = (
             '/* Generado por tools/build.py desde src/' + p['src'] + ' · no editar a mano */\n'
@@ -179,6 +255,11 @@ def main():
         # HTML inicial generado con Node (visible sin JavaScript y para buscadores)
         pre = subprocess.run(['node', str(ROOT / 'tools/prerender.js'), str(js_path)],
                              capture_output=True, text=True, check=True).stdout
+        faqs = json.loads(subprocess.run(['node', str(ROOT / 'tools/prerender.js'), str(js_path), '--faqs'],
+                                         capture_output=True, text=True, check=True).stdout)
+        p['title'] = title
+        v_css = fingerprint(ROOT / 'assets/css/site.css')
+        v = {n: fingerprint(ROOT / 'assets/js' / n) for n in ('morphdom.min.js', 'dc-runtime.js', p['js'])}
 
         b0 = p['base']
         es_url, en_url = SITE_URL + '/', SITE_URL + '/en/'
@@ -193,25 +274,42 @@ def main():
 <link rel="alternate" hreflang="es-MX" href="{es_url}">
 <link rel="alternate" hreflang="en" href="{en_url}">
 <link rel="alternate" hreflang="x-default" href="{es_url}">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="TheKeyAudit">
+<meta name="geo.region" content="MX-JAL">
+<meta name="geo.placename" content="Guadalajara">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="TheKeyAudit">
+<meta property="og:locale" content="{p['locale']}">
+<meta property="og:locale:alternate" content="{p['alt_locale']}">
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{p['desc']}">
 <meta property="og:url" content="{SITE_URL}{p['path']}">
-<meta property="og:image" content="{SITE_URL}/assets/img/favicon/favicon-512.png">
+<meta property="og:image" content="{SITE_URL}/assets/img/og/{p['og']}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{p['og_alt']}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{title}">
+<meta name="twitter:description" content="{p['desc']}">
+<meta name="twitter:image" content="{SITE_URL}/assets/img/og/{p['og']}">
 <meta name="theme-color" content="#0F2A3D">
 <link rel="icon" type="image/png" sizes="32x32" href="{b0}assets/img/favicon/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="{b0}assets/img/favicon/favicon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="{b0}assets/img/favicon/favicon-180.png">
 <link rel="preload" href="{b0}assets/fonts/Astonpoliz.otf" as="font" type="font/otf" crossorigin>
 <link rel="preload" href="{b0}assets/fonts/CreatoDisplay-Regular.otf" as="font" type="font/otf" crossorigin>
-<link rel="stylesheet" href="{b0}assets/css/site.css">
+<link rel="stylesheet" href="{b0}assets/css/site.css?v={v_css}">
 <style>html,body{{margin:0;background:#0F2A3D}}</style>
+<script type="application/ld+json">
+{json_ld(p, faqs)}
+</script>
 </head>
 <body>
 <div id="dc-root">{pre}</div>
-<script src="{b0}assets/js/morphdom.min.js" defer></script>
-<script src="{b0}assets/js/dc-runtime.js" defer></script>
-<script src="{b0}assets/js/{p['js']}" defer></script>
+<script src="{b0}assets/js/morphdom.min.js?v={v['morphdom.min.js']}" defer></script>
+<script src="{b0}assets/js/dc-runtime.js?v={v['dc-runtime.js']}" defer></script>
+<script src="{b0}assets/js/{p['js']}?v={v[p['js']]}" defer></script>
 </body>
 </html>
 '''
@@ -219,6 +317,7 @@ def main():
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(html, encoding='utf-8')
         print('OK', p['out'], len(html), 'bytes')
+    write_seo_files()
 
 
 if __name__ == '__main__':
