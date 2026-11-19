@@ -13,6 +13,7 @@
  *   ];
  *
  * Respuesta JSON: { "success": true } o { "success": false, "code": "...", "message": "..." }
+ * El reenvío a FormSubmit ocurre después de responder; su resultado queda en tka-form.log (junto a public_html).
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -125,16 +126,32 @@ $data['_subject'] = mb_substr((string) ($_POST['_subject'] ?? 'Nueva solicitud �
 $data['_template'] = 'table';
 $data['_captcha'] = 'false';
 $data['reCAPTCHA'] = number_format((float) $v['score'], 1);
+// Responde al visitante de inmediato: FormSubmit puede tardar más de un minuto y el proxy
+// de Hostinger corta las respuestas lentas (HTTP 504). El reenvío sigue en segundo plano.
+ignore_user_abort(true);
+@set_time_limit(180);
+$payload = json_encode(['success' => true]);
+http_response_code(200);
+header('Content-Length: ' . strlen($payload));
+header('Connection: close');
+echo $payload;
+if (function_exists('litespeed_finish_request')) {
+    litespeed_finish_request();
+} elseif (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+} else {
+    while (ob_get_level() > 0) ob_end_flush();
+    flush();
+}
+
 [$st, $r] = post_json($formsubmit, $data, [
     'Referer: https://thekeyaudit.com/',
     'Origin: https://thekeyaudit.com',
-], 100);
+], 150);
 
-if (is_array($r) && (($r['success'] ?? '') === true || ($r['success'] ?? '') === 'true')) {
-    out(true);
-}
-$msg = is_array($r) ? (string) ($r['message'] ?? '') : '';
-if (stripos($msg, 'activat') !== false) {
-    out(false, 'FORM_NOT_ACTIVATED', $msg, 502);
-}
-out(false, 'FORWARD_FAILED', $msg !== '' ? $msg : 'FormSubmit respondió HTTP ' . $st, 502);
+// Bitácora privada (fuera de public_html) para revisar envíos que fallen
+$ok = is_array($r) && (($r['success'] ?? '') === true || ($r['success'] ?? '') === 'true');
+$line = sprintf("%s\t%s\tHTTP %d\t%s\t%s\n", date('c'), $ok ? 'OK' : 'FALLO', $st, $data['email'],
+    is_array($r) ? (string) ($r['message'] ?? '') : 'sin respuesta');
+@file_put_contents(dirname(__DIR__, 2) . '/tka-form.log', $line, FILE_APPEND | LOCK_EX);
+exit;
