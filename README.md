@@ -59,6 +59,12 @@ assets/img/og/        Imágenes para compartir en redes (1200×630); fuente en t
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars --allow-file-access-from-files --window-size=1200,630 --screenshot="$PWD/assets/img/og/og-es.png" "file://$PWD/tools/og/og-es.html"
   ```
 
+## Google Analytics 4
+
+- `assets/js/analytics.js` carga GA4 (`G-XX9YKJB2T2`) solo en `thekeyaudit.com`; en localhost, el lienzo y GitHub Pages no mide nada.
+- Eventos: `generate_lead` (formulario enviado), `form_error` (con `error_code`), `contact_whatsapp`, `contact_phone`, `contact_email` y `social_linkedin` (con `link_location`). Todos llevan `page_language`.
+- En GA4, marca `generate_lead` y `contact_whatsapp` como **eventos clave** (Administrar → Eventos clave).
+
 ## Formulario de contacto
 
 - Envía a `contacto@thekeyaudit.com` mediante [FormSubmit](https://formsubmit.co) (AJAX).

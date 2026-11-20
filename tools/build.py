@@ -259,7 +259,7 @@ def main():
                                          capture_output=True, text=True, check=True).stdout)
         p['title'] = title
         v_css = fingerprint(ROOT / 'assets/css/site.css')
-        v = {n: fingerprint(ROOT / 'assets/js' / n) for n in ('morphdom.min.js', 'dc-runtime.js', p['js'])}
+        v = {n: fingerprint(ROOT / 'assets/js' / n) for n in ('morphdom.min.js', 'dc-runtime.js', 'analytics.js', p['js'])}
 
         b0 = p['base']
         es_url, en_url = SITE_URL + '/', SITE_URL + '/en/'
@@ -301,6 +301,8 @@ def main():
 <link rel="preload" href="{b0}assets/fonts/CreatoDisplay-Regular.otf" as="font" type="font/otf" crossorigin>
 <link rel="stylesheet" href="{b0}assets/css/site.css?v={v_css}">
 <style>html,body{{margin:0;background:#0F2A3D}}</style>
+<link rel="preconnect" href="https://www.googletagmanager.com">
+<script src="{b0}assets/js/analytics.js?v={v['analytics.js']}" async></script>
 <script type="application/ld+json">
 {json_ld(p, faqs)}
 </script>
