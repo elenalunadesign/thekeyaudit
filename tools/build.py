@@ -260,6 +260,7 @@ def build_legal():
 <footer class="foot"><div class="foot-in">
 <span>© {datetime.date.today().year} TheKeyAudit · Guadalajara, Jalisco, {'México' if es else 'Mexico'}</span>
 <span><a href="mailto:contacto@thekeyaudit.com">contacto@thekeyaudit.com</a> · <a href="https://wa.me/523351519484" target="_blank" rel="noopener noreferrer">WhatsApp +52 33 5151 9484</a></span>
+<span>{'Diseñado por' if es else 'Designed by'} <a href="https://elenaluna.com/" target="_blank" rel="noopener">Elena Luna</a></span>
 </div></footer>
 </body>
 </html>
