@@ -187,12 +187,99 @@ def json_ld(p, faqs):
     return data.replace('</', '<\\/')
 
 
+LEGAL = [
+    dict(src='aviso-de-privacidad.es.html', out='aviso-de-privacidad/index.html', path='/aviso-de-privacidad/', lang='es-MX',
+         base='../', home='../', other='../en/privacy-notice/', title='Aviso de privacidad | TheKeyAudit',
+         desc='Aviso de privacidad integral de The Key Audit: qué datos personales tratamos, para qué y cómo ejercer tus derechos ARCO.',
+         og='og-es.png', locale='es_MX', toc='Contenido', back='Volver al inicio', skip='Saltar al contenido',
+         home_label='TheKeyAudit, inicio', print_label='Imprimir'),
+    dict(src='privacy-notice.en.html', out='en/privacy-notice/index.html', path='/en/privacy-notice/', lang='en',
+         base='../../', home='../', other='../../aviso-de-privacidad/', title='Privacy notice | TheKeyAudit',
+         desc='The Key Audit privacy notice: which personal data we process, why, and how to exercise your ARCO rights.',
+         og='og-en.png', locale='en_US', toc='Contents', back='Back to home', skip='Skip to content',
+         home_label='TheKeyAudit, home', print_label='Print'),
+]
+
+
+def build_legal():
+    import html as _html
+    v_css = fingerprint(ROOT / 'assets/css/legal.css')
+    v_ga = fingerprint(ROOT / 'assets/js/analytics.js')
+    for p in LEGAL:
+        content = (SRC / 'legal' / p['src']).read_text(encoding='utf-8')
+        content = re.sub(r'<!--.*?-->', '', content, flags=re.S).strip()
+        toc = ''.join('<li><a href="#%s">%s</a></li>' % (m.group(1), m.group(2))
+                      for m in re.finditer(r'<h2 id="([^"]+)">(.*?)</h2>', content))
+        es = p['lang'] != 'en'
+        b = p['base']
+        es_url, en_url = SITE_URL + '/aviso-de-privacidad/', SITE_URL + '/en/privacy-notice/'
+        lang_nav = ('<span class="lang"><span aria-current="true">ES</span> | <a href="%s" hreflang="en" lang="en">EN</a></span>' % p['other']) if es else \
+                   ('<span class="lang"><a href="%s" hreflang="es" lang="es">ES</a> | <span aria-current="true">EN</span></span>' % p['other'])
+        page = f'''<!doctype html>
+<html lang="{p['lang']}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{p['title']}</title>
+<meta name="description" content="{p['desc']}">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{SITE_URL}{p['path']}">
+<link rel="alternate" hreflang="es-MX" href="{es_url}">
+<link rel="alternate" hreflang="en" href="{en_url}">
+<link rel="alternate" hreflang="x-default" href="{es_url}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TheKeyAudit">
+<meta property="og:locale" content="{p['locale']}">
+<meta property="og:title" content="{p['title']}">
+<meta property="og:description" content="{p['desc']}">
+<meta property="og:url" content="{SITE_URL}{p['path']}">
+<meta property="og:image" content="{SITE_URL}/assets/img/og/{p['og']}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0F2A3D">
+<link rel="icon" type="image/png" sizes="32x32" href="{b}assets/img/favicon/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="{b}assets/img/favicon/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="{b}assets/img/favicon/favicon-180.png">
+<link rel="preload" href="{b}assets/fonts/Astonpoliz.otf" as="font" type="font/otf" crossorigin>
+<link rel="preload" href="{b}assets/fonts/CreatoDisplay-Regular.otf" as="font" type="font/otf" crossorigin>
+<link rel="stylesheet" href="{b}assets/css/legal.css?v={v_css}">
+<link rel="preconnect" href="https://www.googletagmanager.com">
+<script src="{b}assets/js/analytics.js?v={v_ga}" async></script>
+</head>
+<body>
+<a class="skip" href="#contenido">{p['skip']}</a>
+<header class="top"><div class="top-in">
+<a href="{p['home']}" aria-label="{p['home_label']}"><img src="{b}assets/img/thekeyaudit-logo-corto-oscuro.svg" alt="TheKeyAudit" width="226" height="40"></a>
+<nav aria-label="{'Navegación' if es else 'Navigation'}"><a href="{p['home']}">← {p['back']}</a>{lang_nav}</nav>
+</div></header>
+<div class="wrap">
+<nav class="toc" aria-label="{p['toc']}"><p>{p['toc']}</p><ol>{toc}</ol></nav>
+<main id="contenido"><article>
+{content}
+</article></main>
+</div>
+<footer class="foot"><div class="foot-in">
+<span>© {datetime.date.today().year} TheKeyAudit · Guadalajara, Jalisco, {'México' if es else 'Mexico'}</span>
+<span><a href="mailto:contacto@thekeyaudit.com">contacto@thekeyaudit.com</a> · <a href="https://wa.me/523351519484" target="_blank" rel="noopener noreferrer">WhatsApp +52 33 5151 9484</a></span>
+</div></footer>
+</body>
+</html>
+'''
+        out = ROOT / p['out']
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(page, encoding='utf-8')
+        print('OK', p['out'], len(page), 'bytes')
+
+
 def write_seo_files():
     today = datetime.date.today().isoformat()
     urls = ''
     for p in PAGES:
         alts = ''.join('    <xhtml:link rel="alternate" hreflang="%s" href="%s%s"/>\n' % (q['lang'], SITE_URL, q['path']) for q in PAGES)
         alts += '    <xhtml:link rel="alternate" hreflang="x-default" href="%s/"/>\n' % SITE_URL
+        urls += '  <url>\n    <loc>%s%s</loc>\n    <lastmod>%s</lastmod>\n%s  </url>\n' % (SITE_URL, p['path'], today, alts)
+    for p in LEGAL:
+        alts = ''.join('    <xhtml:link rel="alternate" hreflang="%s" href="%s%s"/>\n' % (q['lang'], SITE_URL, q['path']) for q in LEGAL)
+        alts += '    <xhtml:link rel="alternate" hreflang="x-default" href="%s/aviso-de-privacidad/"/>\n' % SITE_URL
         urls += '  <url>\n    <loc>%s%s</loc>\n    <lastmod>%s</lastmod>\n%s  </url>\n' % (SITE_URL, p['path'], today, alts)
     (ROOT / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
@@ -227,6 +314,7 @@ def main():
 
         # Rutas de imágenes y enlaces entre idiomas
         body = re.sub(r'/_blob/([0-9a-f]{32})', lambda m: asset_url(m, p['base']), body)
+        body = body.replace('href="#aviso-de-privacidad"', 'href="%s"' % ('aviso-de-privacidad/' if p['base'] == '' else 'privacy-notice/'))
         if p['base'] == '':
             body = body.replace('href="Main-EN.dc.html"', 'href="en/"')
         else:
@@ -319,6 +407,7 @@ def main():
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(html, encoding='utf-8')
         print('OK', p['out'], len(html), 'bytes')
+    build_legal()
     write_seo_files()
 
 

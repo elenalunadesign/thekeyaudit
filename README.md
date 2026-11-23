@@ -6,6 +6,8 @@ Sitio estático de [thekeyaudit.com](https://thekeyaudit.com), en español e ing
 |---|---|
 | `/` | Español (`index.html`) |
 | `/en/` | Inglés (`en/index.html`) |
+| `/aviso-de-privacidad/` | Aviso de privacidad (español, texto legal vigente) |
+| `/en/privacy-notice/` | Privacy notice (traducción al inglés) |
 
 ## Estructura
 
@@ -48,6 +50,12 @@ assets/img/og/        Imágenes para compartir en redes (1200×630); fuente en t
      - Registro **CNAME** para `www`: `<usuario>.github.io`
    - Activa **Enforce HTTPS** cuando GitHub lo permita.
    - No toques los registros **MX** (correo en Google).
+
+## Aviso de privacidad
+
+- El texto vive en `src/legal/aviso-de-privacidad.es.html` y `src/legal/privacy-notice.en.html` (solo el contenido: títulos, párrafos, listas y tabla).
+- `tools/build.py` lo envuelve con encabezado, índice lateral, pie y estilos (`assets/css/legal.css`), y cambia los enlaces `#aviso-de-privacidad` de la landing por la página correspondiente en cada idioma.
+- Al actualizar el aviso, cambia también la fecha de «Última actualización» en ambos archivos.
 
 ## SEO
 
@@ -92,7 +100,6 @@ En `thekeyaudit.com` el formulario pasa por `api/contacto.php`, que verifica reC
 
 ## Pendientes
 
-- Página de **aviso de privacidad** (`#aviso-de-privacidad` aún no tiene destino).
 - Testimonios reales de clientes (hoy son textos de ejemplo, ocultos).
 
 ---
